@@ -453,10 +453,8 @@
         a.click();
         a.remove();
       } catch (e) {
-        $("msg").textContent =
-          "Не вдається зберегти PNG: браузер блокує експорт canvas (SecurityError / tainted canvas).
-" +
-          "Рішення: 1) Запусти через http://localhost (python -m http.server 8000), або 2) Вибери логотип через 'Browse PNG', або 3) вимкни Logo.";
+        $("msg").textContent = `Не вдається зберегти PNG: браузер блокує експорт canvas (SecurityError / tainted canvas).
+Рішення: 1) Запусти через http://localhost (python -m http.server 8000), або 2) Вибери логотип через 'Browse PNG', або 3) вимкни Logo.`;
       }
       return;
     }
@@ -529,3 +527,4 @@
 
 </body>
 </html>
+

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Offline QR Generator (Nayuki) — PNG/SVG + Logo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Montserrat',Arial, sans-serif; padding: 16px; }
+  .grid { display: grid; grid-template-columns: 550px 1fr; gap: 16px; align-items: start; }
+  textarea { width: 100%; height: 120px; }
+  canvas { border: 1px solid #ccc; image-rendering: pixelated; }
+  #svgBox { border:1px solid #ccc; padding: 10px; display:none; }
+  .row { display:flex; gap:12px; flex-wrap: wrap; align-items:center; margin: 10px 0; }
+  .row > label { display:flex; gap:8px; align-items:center; }
+  .hint { color:#666; font-size: 12px; line-height: 1.35; }
+  .err { color:#a00; margin-top: 8px; }
+  .preview { display:flex; gap:10px; align-items:center; }
+  .swatch { width: 18px; height: 18px; border:1px solid #999; border-radius: 4px; }
+  .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; color:#333; }
+</style>
+</head>
+<body>
+<a href="https://oxi.ua/" class="t228__imgwrapper"> <img class="t228__imglogo " src="https://static.tildacdn.one/tild3064-3738-4135-b438-633265303466/logo.svg" imgfield="img" style="max-height: 80px" alt="Arzătoare OXI"> </a>
+
+<h3>QR-код генератор — PNG / SVG</h3>
+
+<div class="grid">
+  <div>
+    <label>Текст / URL</label>
+    <textarea id="txt">https://oxi.ua/</textarea>
+
+    <div class="row">
+      <label title="Рівень надлишковості даних. Чим він вищий, тим краще код зчитується при пошкодженні або забрудненні, але сам візерунок стає щільнішим">Виправлення помилок ECC:
+        <select id="ecc">
+          <option value="L">Low (≈7%)</option>
+          <option value="M">Medium (≈15%)</option>
+          <option value="Q">Quartile (≈25%)</option>
+          <option value="H" selected>High (≈30%)</option>
+        </select>
+      </label>
+	  
+	  <label title="Автоматичне підвищення рівня корекції помилок до максимально можливого при поточному розмірі коду. Це робить QR-код більш надійним">Boost ECC:
+        <input id="boost" type="checkbox" checked>
+        </label>
+      </label>
+
+      <label title="Оберіть PNG для звичайного використання (соцмережі, сайти) або SVG для професійного друку та масштабування без втрати якості">Формат експорту:
+        <select id="format">
+          <option value="png" selected>Bitmap (PNG)</option>
+          <option value="svg">Vector (SVG)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label title="Встановлює розмір одного маленького квадрата (пікселя) у складі QR-коду. Визначає загальну роздільну здатність зображення">Розмір модуля px:
+        <input id="scale" type="number" min="1" max="50" value="8">
+      </label>
+      <label title="Ширина білого поля навколо QR-коду. Необхідна, щоб сканери могли чітко відокремити код від фону навколишніх елементів">Отступ (quiet zone):
+        <input id="border" type="number" min="0" max="40" value="4">
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="preview">
+        <label>Темний:
+          <input id="dark" type="color" value="#000000">
+        </label>
+        <span class="swatch" id="darkSw"></span>
+      </div>
+
+      <div class="preview">
+        <label>Світлий:
+          <input id="light" type="color" value="#ffffff">
+        </label>
+        <span class="swatch" id="lightSw"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <label title="Алгоритм, який «перемішує» чорні та білі модулі за однією з 8 формул, щоб уникнути нечитабельності">Корекція визирунку:
+        <select id="mask">
+          <option value="-1" selected>Auto (-1)</option>
+          <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+        </select>
+      </label>
+    </div>
+
+	<div class="row">
+      <label title="Увімкнути логотип по центру (і для PNG, і для SVG)">
+        Logo:
+        <input id="logoOn" type="checkbox" checked>
+      </label>
+
+      <label title="PNG логотип (має лежати поруч з index.html)">
+        PNG file:
+        <input id="logoPng" type="text" value="logo.png" style="width:160px">
+      </label>
+
+      <label title="SVG логотип (має лежати поруч з index.html). Для вбудовування у збережений qr.svg найнадійніше вибрати файл через кнопку 'Browse' нижче (працює навіть у режимі file://)">
+        SVG file:
+        <input id="logoSvg" type="text" value="logo.svg" style="width:160px">
+      </label>
+
+      <label title="Вибрати PNG логотип з диска (рекомендовано для режиму file:// — не 'псує' canvas і дозволяє Save PNG)">
+        Browse PNG:
+        <input id="logoPngFile" type="file" accept="image/png,image/jpeg,image/webp" style="width:220px">
+      </label>
+
+      <label title="Вибрати SVG логотип з диска (вбудовується у qr.svg навіть у режимі file://)">
+        Browse SVG:
+        <input id="logoSvgFile" type="file" accept="image/svg+xml" style="width:220px">
+      </label>
+
+      <label title="Розмір логотипа у % від кількості модулів QR. Значення підганяється до кратності модулям і центру">
+        Logo %:
+        <input id="logoPct" type="number" min="5" max="40" value="25" style="width:64px">
+      </label>
+    </div>
+
+    <div class="row">
+      <button id="btnGen">Generate</button>
+      <button id="btnSave">Save</button>
+    </div>
+
+    <div class="hint">
+      <b>PNG</b>: canvas → збереження як <span class="code">qr.png</span><br>
+      <b>SVG</b>: генерується вектор → збереження як <span class="code">qr.svg</span>.<br>
+      Для SVG-логотипа використовується <span class="code">fetch()</span>. Якщо відкривати цей файл подвійним кліком (file://), браузер може блокувати читання <span class="code">logo.svg</span>.
+      Найпростіше: запусти локальний сервер у папці з файлами:<br>
+      <span class="code">python -m http.server 8000</span> і відкрий <span class="code">http://localhost:8000/index.html</span>
+    </div>
+
+    <div id="msg" class="err"></div>
+  </div>
+
+  <div>
+    <canvas id="cv"></canvas>
+    <div id="svgBox"></div>
+  </div>
+</div>
+
+<!-- Підключи сюди файл Nayuki: qrcodegen-v1.8.0-es6.js (лежить поруч) -->
+<script src="./qrcodegen-v1.8.0-es6.js"></script>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const cv = $("cv");
+  const ctx = cv.getContext("2d");
+
+  // --- UI ---
+  function setSwatches(){
+    $("darkSw").style.background = $("dark").value;
+    $("lightSw").style.background = $("light").value;
+  }
+
+  function eccFromChar(ch){
+    const E = qrcodegen.QrCode.Ecc;
+    if (ch === "L") return E.LOW;
+    if (ch === "M") return E.MEDIUM;
+    if (ch === "Q") return E.QUARTILE;
+    return E.HIGH;
+  }
+
+  // --- Logo sizing: % of modules, aligned to module grid, centered even/odd ---
+  function calcLogoModules(qrSize, ratio){
+    let m = Math.max(1, Math.round(qrSize * ratio));
+
+    // Ensure centered exactly on module grid: (qrSize - m) must be even
+    if ((qrSize - m) % 2 !== 0) m += 1;
+
+    // Safety
+    if (m >= qrSize) m = qrSize - ((qrSize % 2 === 0) ? 2 : 1);
+    if (m < 1) m = 1;
+
+    return m;
+  }
+
+  function calcLogoRectPx(qrSize, border, scale, ratio){
+    const logoM = calcLogoModules(qrSize, ratio);
+    const startM = (qrSize - logoM) / 2; // integer after parity adjustment
+
+    const x = (border + startM) * scale;
+    const y = (border + startM) * scale;
+    const w = logoM * scale;
+    const h = logoM * scale;
+
+    return { logoM, startM, x, y, w, h };
+  }
+
+  // --- PNG logo cache ---
+  let __logoImg = null;
+  let __logoImgSrc = "";
+  let __logoImgDataUrl = ""; // from file input
+
+  function readFileAsDataURL(file){
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ""));
+      fr.onerror = () => reject(fr.error || new Error("FileReader error"));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function getLogoImage(src){
+    // Prefer in-memory DataURL selected by user (works in file:// and won't taint canvas)
+    if (__logoImgDataUrl){
+      if (__logoImg && __logoImgSrc === "__DATAURL__") return __logoImg;
+      __logoImgSrc = "__DATAURL__";
+      __logoImg = await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = __logoImgDataUrl;
+      });
+      return __logoImg;
+    }
+
+    // Fallback to path
+    if (!src) return null;
+    if (__logoImg && __logoImgSrc === src) return __logoImg;
+
+    __logoImgSrc = src;
+    __logoImg = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src + (src.includes("?") ? "&" : "?") + "v=" + Date.now();
+    });
+
+    return __logoImg;
+  }
+
+  // --- SVG logo cache + robust viewBox parsing (Corel friendly) ---
+  let __logoSvgCache = { path: "", svgText: "", inner: "", vb: null };
+  let __logoSvgInlineText = ""; // from file input
+
+  function readFileAsText(file){
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ""));
+      fr.onerror = () => reject(fr.error || new Error("FileReader error"));
+      fr.readAsText(file);
+    });
+  }
+
+  // Parse SVG and extract inner markup + viewBox (or fallback to width/height)
+  function parseSvgInfo(svgText){
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.documentElement;
+
+    const inner = svg.innerHTML;
+
+    const vbAttr = svg.getAttribute("viewBox");
+    if (vbAttr){
+      const nums = vbAttr.trim().split(/[ ,]+/).map(Number);
+      if (nums.length === 4 && nums.every(n => Number.isFinite(n))){
+        return { inner, vb: { x: nums[0], y: nums[1], w: nums[2], h: nums[3] } };
+      }
+    }
+
+    const wAttr = svg.getAttribute("width") || "";
+    const hAttr = svg.getAttribute("height") || "";
+    const w = parseFloat(wAttr);
+    const h = parseFloat(hAttr);
+    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0){
+      return { inner, vb: { x: 0, y: 0, w, h } };
+    }
+
+    return { inner, vb: { x: 0, y: 0, w: 100, h: 100 } };
+  }
+
+
+  async function loadLogoSvg(path){
+    // Prefer inline SVG selected by user (works in file:// and embeds into output)
+    if (__logoSvgInlineText){
+      const info = parseSvgInfo(__logoSvgInlineText);
+      return { path: "__INLINE__", svgText: __logoSvgInlineText, inner: info.inner, vb: info.vb };
+    }
+
+    if (!path) return null;
+    if (__logoSvgCache.path === path && __logoSvgCache.svgText) return __logoSvgCache;
+
+    try{
+      const resp = await fetch(path + (path.includes("?") ? "&" : "?") + "v=" + Date.now());
+      const txt = await resp.text();
+      const info = parseSvgInfo(txt);
+      __logoSvgCache = { path, svgText: txt, inner: info.inner, vb: info.vb };
+      return __logoSvgCache;
+    } catch(e){
+      return null;
+    }
+  }
+
+  // --- Drawing helpers ---
+  function escapeXml(s){
+    return String(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/\"/g,"&quot;")
+      .replace(/'/g,"&apos;");
+  }
+
+  async function renderPNGWithLogo(qr, scale, border, dark, light, logoOn, logoPngPath, logoRatio){
+    const size = qr.size;
+    const dim = (size + border * 2) * scale;
+
+    cv.width = dim;
+    cv.height = dim;
+
+    // background
+    ctx.fillStyle = light;
+    ctx.fillRect(0, 0, dim, dim);
+
+    // modules
+    ctx.fillStyle = dark;
+    for (let y = 0; y < size; y++){
+      for (let x = 0; x < size; x++){
+        if (qr.getModule(x, y)){
+          ctx.fillRect((x + border) * scale, (y + border) * scale, scale, scale);
+        }
+      }
+    }
+
+    if (!logoOn) return;
+
+    const img = await getLogoImage(logoPngPath);
+    if (!img) return;
+
+    const r = calcLogoRectPx(size, border, scale, logoRatio);
+
+    // Clear area under logo
+    ctx.fillStyle = light;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+
+    // Draw logo
+    ctx.drawImage(img, r.x, r.y, r.w, r.h);
+  }
+
+  async function renderSVGWithLogo(qr, scale, border, dark, light, logoOn, logoSvgPath, logoRatio){
+    const size = qr.size;
+    const dim = (size + border * 2) * scale;
+
+    let parts = [];
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${dim}" height="${dim}" viewBox="0 0 ${dim} ${dim}">`);
+    parts.push(`<rect x="0" y="0" width="${dim}" height="${dim}" fill="${escapeXml(light)}"/>`);
+
+    // modules
+    for (let y = 0; y < size; y++){
+      for (let x = 0; x < size; x++){
+        if (qr.getModule(x, y)){
+          const rx = (x + border) * scale;
+          const ry = (y + border) * scale;
+          parts.push(`<rect x="${rx}" y="${ry}" width="${scale}" height="${scale}" fill="${escapeXml(dark)}"/>`);
+        }
+      }
+    }
+
+    if (logoOn){
+      const r = calcLogoRectPx(size, border, scale, logoRatio);
+      parts.push(`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${escapeXml(light)}"/>`);
+
+      const logo = await loadLogoSvg(logoSvgPath);
+      if (logo && logo.inner){
+        const vb = logo.vb; // {x,y,w,h}
+        const sx = r.w / vb.w;
+        const sy = r.h / vb.h;
+        const tx = r.x - vb.x * sx;
+        const ty = r.y - vb.y * sy;
+
+        parts.push(`<g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">`);
+        parts.push(logo.inner);
+        parts.push(`</g>`);
+      } else {
+        // Fallback: link (not embedded). Якщо fetch заблокований (file://), логотип все одно буде видно,
+        // але при переносі qr.svg потрібно тримати logo.svg поруч.
+        parts.push(`<image href="${escapeXml(logoSvgPath)}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" preserveAspectRatio="xMidYMid meet"/>`);
+      }
+    }
+
+    parts.push(`</svg>`);
+    return parts.join("");
+  }
+
+  // --- Main ---
+  async function generate(){
+    $("msg").textContent = "";
+    setSwatches();
+
+    const text = $("txt").value ?? "";
+    const ecc = eccFromChar($("ecc").value);
+    const scale = Math.max(1, parseInt($("scale").value || "8", 10));
+    const border = Math.max(0, parseInt($("border").value || "4", 10));
+    const dark = $("dark").value;
+    const light = $("light").value;
+
+    const mask = parseInt($("mask").value, 10); // -1..7
+    const boost = $("boost").checked;
+
+    const logoOn = $("logoOn").checked;
+    const logoPngPath = $("logoPng").value.trim();
+    const logoSvgPath = $("logoSvg").value.trim();
+    const logoPct = Math.max(1, Math.min(90, parseInt($("logoPct").value || "25", 10)));
+    const logoRatio = logoPct / 100;
+
+    try{
+      // Use encodeSegments for mask/boost control
+      const segs = qrcodegen.QrSegment.makeSegments(text);
+      const qr = qrcodegen.QrCode.encodeSegments(segs, ecc, 1, 40, mask, boost);
+
+      const fmt = $("format").value;
+      if (fmt === "png"){
+        $("svgBox").style.display = "none";
+        cv.style.display = "block";
+        await renderPNGWithLogo(qr, scale, border, dark, light, logoOn, logoPngPath, logoRatio);
+        $("svgBox").innerHTML = "";
+      } else {
+        cv.style.display = "none";
+        const svg = await renderSVGWithLogo(qr, scale, border, dark, light, logoOn, logoSvgPath, logoRatio);
+        $("svgBox").style.display = "block";
+        $("svgBox").innerHTML = svg;
+      }
+
+      window.__lastState = { fmt, qr, scale, border, dark, light, logoOn, logoPngPath, logoSvgPath, logoRatio };
+
+    } catch(e){
+      $("msg").textContent = "Помилка: " + (e && e.message ? e.message : String(e));
+    }
+  }
+
+  function save(){
+    $("msg").textContent = "";
+
+    if (!window.__lastState){
+      generate();
+      return;
+    }
+
+    const st = window.__lastState;
+
+    if (st.fmt === "png"){
+      try {
+        const a = document.createElement("a");
+        a.download = "qr.png";
+        a.href = cv.toDataURL("image/png");
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (e) {
+        $("msg").textContent =
+          "Не вдається зберегти PNG: браузер блокує експорт canvas (SecurityError / tainted canvas).
+" +
+          "Рішення: 1) Запусти через http://localhost (python -m http.server 8000), або 2) Вибери логотип через 'Browse PNG', або 3) вимкни Logo.";
+      }
+      return;
+    }
+
+    try {
+      const svg = $("svgBox").innerHTML;
+      const blob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.download = "qr.svg";
+      a.href = url;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      $("msg").textContent = "Не вдалося зберегти SVG: " + (e && e.message ? e.message : String(e));
+    }
+  }
+
+  $("btnGen").addEventListener("click", generate);
+  $("btnSave").addEventListener("click", save);
+
+  // live update
+  $("dark").addEventListener("input", () => { setSwatches(); generate(); });
+  $("light").addEventListener("input", () => { setSwatches(); generate(); });
+  $("format").addEventListener("change", generate);
+  $("ecc").addEventListener("change", generate);
+  $("mask").addEventListener("change", generate);
+  $("boost").addEventListener("change", generate);
+
+  $("scale").addEventListener("change", generate);
+  $("border").addEventListener("change", generate);
+
+  $("logoOn").addEventListener("change", generate);
+  $("logoPng").addEventListener("change", generate);
+  $("logoSvg").addEventListener("change", generate);
+  $("logoPct").addEventListener("change", generate);
+
+  // File inputs (recommended for file://)
+  $("logoPngFile").addEventListener("change", async (ev) => {
+    try{
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) { __logoImgDataUrl = ""; __logoImg = null; __logoImgSrc = ""; await generate(); return; }
+      __logoImgDataUrl = await readFileAsDataURL(f);
+      __logoImg = null; __logoImgSrc = "";
+      await generate();
+    } catch (e) {
+      $("msg").textContent = "Не вдалося прочитати PNG логотип: " + (e && e.message ? e.message : String(e));
+    }
+  });
+
+  $("logoSvgFile").addEventListener("change", async (ev) => {
+    try{
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) { __logoSvgInlineText = ""; await generate(); return; }
+      __logoSvgInlineText = await readFileAsText(f);
+      await generate();
+    } catch (e) {
+      $("msg").textContent = "Не вдалося прочитати SVG логотип: " + (e && e.message ? e.message : String(e));
+    }
+  });
+
+  // init
+  setSwatches();
+  generate();
+</script>
+
+</body>
+</html>

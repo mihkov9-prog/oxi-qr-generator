@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="utf-8">
@@ -10,7 +9,7 @@
 <style>
   body { font-family: 'Montserrat',Arial, sans-serif; padding: 16px; }
   .grid { display: grid; grid-template-columns: 550px 1fr; gap: 16px; align-items: start; }
-  textarea { width: 100%; height: 120px; }
+  textarea { width: 100%; height: 30px; }
   canvas { border: 1px solid #ccc; image-rendering: pixelated; }
   #svgBox { border:1px solid #ccc; padding: 10px; display:none; }
   .row { display:flex; gap:12px; flex-wrap: wrap; align-items:center; margin: 10px 0; }
@@ -89,50 +88,50 @@
         </select>
       </label>
     </div>
-
+<hr>
 	<div class="row">
       <label title="Увімкнути логотип по центру (і для PNG, і для SVG)">
         Logo:
         <input id="logoOn" type="checkbox" checked>
       </label>
-
+	</div>
+	
+	<div class="row">
       <label title="PNG логотип (має лежати поруч з index.html)">
         PNG file:
-        <input id="logoPng" type="text" value="logo.png" style="width:160px">
+        <input id="logoPng" type="text" value="logo.png" style="width:100px">
       </label>
-
+	  <label title="Вибрати PNG логотип з диска (рекомендовано для режиму file:// — не 'псує' canvas і дозволяє Save PNG)">
+        або
+        <input id="logoPngFile" type="file" accept="image/png,image/jpeg,image/webp" style="width:100%">
+      </label>
+	</div>
+	
+	<div class="row">
       <label title="SVG логотип (має лежати поруч з index.html). Для вбудовування у збережений qr.svg найнадійніше вибрати файл через кнопку 'Browse' нижче (працює навіть у режимі file://)">
         SVG file:
-        <input id="logoSvg" type="text" value="logo.svg" style="width:160px">
+        <input id="logoSvg" type="text" value="logo.svg" style="width:100px">
       </label>
-
-      <label title="Вибрати PNG логотип з диска (рекомендовано для режиму file:// — не 'псує' canvas і дозволяє Save PNG)">
-        Browse PNG:
-        <input id="logoPngFile" type="file" accept="image/png,image/jpeg,image/webp" style="width:220px">
-      </label>
-
       <label title="Вибрати SVG логотип з диска (вбудовується у qr.svg навіть у режимі file://)">
-        Browse SVG:
-        <input id="logoSvgFile" type="file" accept="image/svg+xml" style="width:220px">
+        або
+        <input id="logoSvgFile" type="file" accept="image/svg+xml" style="width:100%">
       </label>
-
+	</div>  
+	<div class="row">
       <label title="Розмір логотипа у % від кількості модулів QR. Значення підганяється до кратності модулям і центру">
         Logo %:
         <input id="logoPct" type="number" min="5" max="40" value="25" style="width:64px">
       </label>
     </div>
-
+<hr>
     <div class="row">
-      <button id="btnGen">Generate</button>
-      <button id="btnSave">Save</button>
+      <button id="btnGen" title="Оновити зображення QR-кода">Generate</button>
+      <button id="btnSave" title="Завантажити зображення QR-кода">Save</button>
     </div>
-
+<hr>
     <div class="hint">
       <b>PNG</b>: canvas → збереження як <span class="code">qr.png</span><br>
       <b>SVG</b>: генерується вектор → збереження як <span class="code">qr.svg</span>.<br>
-      Для SVG-логотипа використовується <span class="code">fetch()</span>. Якщо відкривати цей файл подвійним кліком (file://), браузер може блокувати читання <span class="code">logo.svg</span>.
-      Найпростіше: запусти локальний сервер у папці з файлами:<br>
-      <span class="code">python -m http.server 8000</span> і відкрий <span class="code">http://localhost:8000/index.html</span>
     </div>
 
     <div id="msg" class="err"></div>
@@ -527,5 +526,6 @@
 
 </body>
 </html>
+
 
 

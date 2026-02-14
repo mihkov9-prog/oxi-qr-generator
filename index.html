@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="utf-8">
@@ -6,11 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-<link rel="icon" href="./favicon.ico" sizes="any">
-<link rel="icon" href="./icon-32.png" type="image/png" sizes="32x32">
-<link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" href="./apple-touch.png">
-	
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon_32.png" type="image/png">
+<link rel="icon" href="/favicon_192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/apple-touch.png">
 <style>
   body { font-family: 'Montserrat',Arial, sans-serif; padding: 16px; }
   .grid { display: grid; grid-template-columns: 550px 1fr; gap: 16px; align-items: start; }
@@ -27,7 +27,7 @@
 </style>
 </head>
 <body>
-<a href="https://oxi.ua/" class="t228__imgwrapper"> <img class="t228__imglogo " src="https://static.tildacdn.one/tild3064-3738-4135-b438-633265303466/logo.svg" imgfield="img" style="max-height: 80px" alt="Arzătoare OXI"> </a>
+<a href="https://oxi.ua/" class="t228__imgwrapper"> <img class="t228__imglogo " src="https://static.tildacdn.one/tild3064-3738-4135-b438-633265303466/logo.svg" imgfield="img" style="max-height: 80px" alt=" OXI"> </a>
 
 <h3>QR-код генератор — PNG / SVG</h3>
 
@@ -130,15 +130,22 @@
     </div>
 <hr>
     <div class="row">
-      <button id="btnGen" title="Оновити зображення QR-кода">Generate</button>
-      <button id="btnSave" title="Завантажити зображення QR-кода">Save</button>
+      <button id="btnGen" title="Оновити зображення QR-кода"> Generate </button>
+      <button id="btnSave" title="Завантажити зображення QR-кода"> Save </button>
+	  <b>→</b>
+
+	    <input id="SaveBase" type="text" style="width:220px;">
+		<span id="SaveExt">.png</span>
     </div>
+<hr>
+	<div id="pngSizeInfo" class="hint" style="margin-top:6px;"></div>
 <hr>
     <div class="hint">
       <b>PNG</b>: canvas → збереження як <span class="code">qr.png</span><br>
       <b>SVG</b>: генерується вектор → збереження як <span class="code">qr.svg</span>.<br>
+	  <b>Автор</b>: <a href="https://t.me/mihkov9">mihkov9</a>
     </div>
-
+<hr>
     <div id="msg" class="err"></div>
   </div>
 
@@ -395,6 +402,7 @@
   // --- Main ---
   async function generate(){
     $("msg").textContent = "";
+	updatePlannedFileName(false);
     setSwatches();
 
     const text = $("txt").value ?? "";
@@ -423,12 +431,20 @@
         $("svgBox").style.display = "none";
         cv.style.display = "block";
         await renderPNGWithLogo(qr, scale, border, dark, light, logoOn, logoPngPath, logoRatio);
-        $("svgBox").innerHTML = "";
+		updatePlannedFileName(false);
+         // показать размер PNG
+		  const w = cv.width;
+		  const h = cv.height;
+		  $("pngSizeInfo").textContent = `PNG size: ${w} × ${h} px - повний розмір разом з Отступ (quiet zone)`;
+
+		  $("svgBox").innerHTML = "";
       } else {
+		$("pngSizeInfo").textContent = "";
         cv.style.display = "none";
         const svg = await renderSVGWithLogo(qr, scale, border, dark, light, logoOn, logoSvgPath, logoRatio);
         $("svgBox").style.display = "block";
         $("svgBox").innerHTML = svg;
+		updatePlannedFileName(false);
       }
 
       window.__lastState = { fmt, qr, scale, border, dark, light, logoOn, logoPngPath, logoSvgPath, logoRatio };
@@ -437,6 +453,88 @@
       $("msg").textContent = "Помилка: " + (e && e.message ? e.message : String(e));
     }
   }
+  
+	  let __userEditedSaveName = false;
+
+	function sanitizeFileBase(s){
+	  s = String(s || "");
+
+	  // Запрещённые символы + управляющие
+	  s = s.replace(/[<>:"\/\\|?*\x00-\x1F]/g, "");
+
+	  // Нормализуем пробелы
+	  s = s.replace(/\s+/g, " ").trim();
+
+	  // Нельзя заканчивать точкой/пробелом (Windows)
+	  s = s.replace(/[.\s]+$/g, "");
+
+	  // Ограничим длину (по желанию)
+	  if (s.length > 80) s = s.slice(0, 80);
+
+	  return s;
+	}
+
+	function plannedBaseName(){
+	  const fmt = $("format").value;
+	  const base = safeBaseNameFromText($("txt").value);
+
+	  if (fmt === "png"){
+		const px = (cv && cv.width) ? cv.width : "?";
+		return base + "-" + px + "px";
+	  }
+	  return base;
+	}
+
+	function updatePlannedFileName(force = false){
+	  const fmt = $("format").value;
+	  $("SaveExt").textContent = (fmt === "png") ? ".png" : ".svg";
+
+	  // Если пользователь уже правит — не перетираем, только если force=true
+	  if (__userEditedSaveName === false || force === true || !$("SaveBase").value.trim()){
+		$("SaveBase").value = plannedBaseName();
+	  }
+	}
+
+	function buildFinalFileName(){
+	  const baseSan = sanitizeFileBase($("SaveBase").value);
+	  // обновим поле очищенным вариантом (чтобы человек видел итог)
+	  $("SaveBase").value = baseSan || "qr";
+	  return $("SaveBase").value + $("SaveExt").textContent;
+	}
+
+	function safeBaseNameFromText(text){
+	  // Делает безопасное имя файла из закодированного текста
+	  let s = String(text || "").trim();
+
+	  // Если это URL — делаем более осмысленно: домен + путь + query
+	  try {
+		if (/^https?:\/\//i.test(s)) {
+		  const u = new URL(s);
+		  s = u.hostname + u.pathname + (u.search ? ("_" + u.search) : "");
+		}
+	  } catch (_) {}
+
+	  // пробелы -> _
+	  s = s.replace(/\s+/g, "_");
+
+	  // запрещённые символы файлов: <>:"/\|?* и управляющие
+	  s = s.replace(/[<>:"\/\\|?*\x00-\x1F]/g, "");
+
+	  // убрать точки/пробелы в конце (Windows)
+	  s = s.replace(/[.\s]+$/g, "");
+
+	  // схлопнуть повторы
+	  s = s.replace(/_+/g, "_").replace(/-+/g, "-");
+
+	  // ограничить длину
+	  const maxLen = 80;
+	  if (s.length > maxLen) s = s.slice(0, maxLen);
+
+	  if (!s) s = "qr";
+	  return s;
+	}
+	
+
 
   function save(){
     $("msg").textContent = "";
@@ -447,11 +545,13 @@
     }
 
     const st = window.__lastState;
-
+	updatePlannedFileName(false);
+	const filename = $("SaveBase").value + $("SaveExt").textContent;
+	
     if (st.fmt === "png"){
       try {
         const a = document.createElement("a");
-        a.download = "qr.png";
+        a.download = filename;
         a.href = cv.toDataURL("image/png");
         document.body.appendChild(a);
         a.click();
@@ -469,7 +569,7 @@
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement("a");
-      a.download = "qr.svg";
+      a.download = filename;
       a.href = url;
       document.body.appendChild(a);
       a.click();
@@ -499,6 +599,11 @@
   $("logoPng").addEventListener("change", generate);
   $("logoSvg").addEventListener("change", generate);
   $("logoPct").addEventListener("change", generate);
+  
+	$("SaveBase").addEventListener("click", () => $("SaveBase").select());
+	$("txt").addEventListener("input", updatePlannedFileName);
+	$("scale").addEventListener("input", updatePlannedFileName);
+	$("border").addEventListener("input", updatePlannedFileName);
 
   // File inputs (recommended for file://)
   $("logoPngFile").addEventListener("change", async (ev) => {
@@ -523,6 +628,18 @@
       $("msg").textContent = "Не вдалося прочитати SVG логотип: " + (e && e.message ? e.message : String(e));
     }
   });
+  
+	  $("SaveBase").addEventListener("input", () => {
+	  __userEditedSaveName = true;
+	  $("SaveBase").value = sanitizeFileBase($("SaveBase").value);
+	});
+
+	$("SaveBase").addEventListener("focus", () => {
+	  __userEditedSaveName = true;
+	});
+
+	// удобно: клик — выделить всё
+	$("SaveBase").addEventListener("click", () => $("SaveBase").select());
 
   // init
   setSwatches();
@@ -531,8 +648,3 @@
 
 </body>
 </html>
-
-
-
-
-
